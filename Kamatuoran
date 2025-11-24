@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kamatuoran</title>
+<style>
+  :root{
+    --accent:#b37533; /* warm gold */
+    --deep:#3b2b2b;
+    --paper-fallback:#fbf6ef;
+    --muted:#777;
+  }
+
+  /* Loading overlay */
+  #loaderOverlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));
+    z-index:9999; flex-direction:column; gap:18px;
+  }
+  .loader-circle{
+    width:86px; height:86px; border-radius:50%;
+    border:10px solid rgba(179,117,51,0.12);
+    border-top-color:var(--accent);
+    animation:spin 1s linear infinite;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loaderPercent{ font-weight:700; color:var(--deep); letter-spacing:1px; }
+
+  /* sound enable small pill */
+  #soundPill{
+    position:fixed; right:18px; bottom:18px; z-index:9998;
+    background:rgba(255,255,255,0.95); border:1px solid #eee;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    padding:8px 12px; border-radius:24px; display:flex; gap:10px; align-items:center;
+    cursor:pointer; font-weight:600;
+  }
+
+  /* base page */
+  body{
+    margin:0;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background-color: var(--paper-fallback);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)),
+      url("https://tse1.mm.bing.net/th/id/OIP.w2A7mfT3eNry-ssQ0MyO6QHaEK?rs=1&pid=ImgDetMain&o=7&rm=3");
+    background-size: cover;
+    background-repeat: repeat;
+    color:#222;
+  }
+
+  header{
+    position:sticky; top:0; z-index:100;
+    backdrop-filter: blur(4px);
+    background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.45));
+    border-bottom: 6px solid rgba(183,117,51,0.12);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 26px;
+  }
+  header h1{ margin:0; color:var(--accent); letter-spacing:3px; font-size:20px; cursor:pointer; }
+  nav{ display:flex; gap:10px; align-items:center; }
+  nav button{
+    background:transparent; border:2px solid var(--accent); color:var(--accent);
+    padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600;
+  }
+  nav button:hover{ background:var(--accent); color:white; }
+
+  .kalinga-divider{ height:8px; width:100%; background-image: linear-gradient(90deg,#a11 0 10%, #ffcc66 10% 20%, #a11 20% 30%); background-size:50px 8px; opacity:0.9; }
+
+  .container{ max-width:1150px; margin:24px auto; padding:0 18px; }
+
+  .home-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:20px; align-items:start; }
+  .hero{ background: rgba(255,255,255,0.9); padding:18px; border-radius:12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:12px; }
+  .hero img{ width:100%; height:360px; object-fit:cover; border-radius:10px; }
+  .hero h2{ margin:0; color:var(--deep); font-size:28px; }
+  .hero p{ margin:0; color:#333; line-height:1.45; }
+
+  .sidebar{ background: rgba(255,255,255,0.95); padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+  .editorial{ border-left:4px solid var(--accent); padding-left:12px; margin-bottom:12px; }
+
+  .article-list{ margin-top:18px; display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .article-card{ background: rgba(255,255,255,0.92); padding:12px; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,0.06); cursor: pointer; position:relative; overflow:visible; }
+  .article-card img{ width:100%; height:140px; object-fit:cover; border-radius:8px; }
+  .article-card h3{ margin:8px 0 6px; color:var(--accent); }
+  .article-card p{ margin:0; font-size:14px; color:#333; }
+
+  .category-row{ display:flex; gap:18px; justify-content:space-between; margin-top:24px; flex-wrap:wrap; }
+  .category-card{ width:32%; min-width:220px; background:rgba(255,255,255,0.95); border-radius:12px; overflow:hidden; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.08); position:relative; }
+  .category-card img{ width:100%; height:190px; object-fit:cover; }
+  .category-card h4{ margin:10px; color:var(--accent); text-align:center; }
+  .emoji-widget{
+    position:absolute; left:12px; bottom:12px; display:flex; gap:8px; align-items:center;
+    background:rgba(255,255,255,0.95); padding:6px 8px; border-radius:999px; box-shadow:0 6px 12px rgba(0,0,0,0.06);
+  }
+  .emoji-btn{ font-size:20px; cursor:pointer; user-select:none; padding:6px; border-radius:8px; transition:transform .18s ease; }
+  .emoji-count{ font-size:13px; color:var(--muted); margin-left:6px; font-weight:700; }
+
+  .sub-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:14px; }
+  .sub-box{ background:white; border-radius:10px; overflow:hidden; box-shadow:0 5px 14px rgba(0,0,0,0.06); cursor:pointer; position:relative; }
+  .sub-box img{ width:100%; height:140px; object-fit:cover; }
+  .sub-box h3{ margin:0; padding:10px; background:var(--accent); color:white; text-align:center; }
+
+  .page-section{ background: rgba(255,255,255,0.95); padding:18px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-top:18px; }
+  .back-btn{ display:inline-block; padding:8px 12px; background:var(--accent); color:white; border-radius:8px; border:none; cursor:pointer; margin-bottom:12px; }
+
+  .slider{ display:flex; gap:10px; overflow-x:auto; padding:6px 0; }
+  .slider img{ width:320px; height:200px; object-fit:cover; border-radius:8px; }
+
+  .add-img-btn{ margin-top:10px; padding:8px 12px; background:var(--deep); color:white; border:none; border-radius:8px; cursor:pointer; }
+
+  /* small-floating emoji explosions */
+  .float-emoji{
+    position:fixed; left:0; top:0; pointer-events:none; font-size:28px; transform:translate(-50%,-50%); animation:floatUp 1.2s ease forwards;
+  }
+  @keyframes floatUp{
+    0%{ opacity:1; transform: translate(-50%,-50%) scale(1); }
+    100%{ opacity:0; transform: translate(-50%,-220%) scale(1.4); }
+  }
+
+  @media (max-width:900px){
+    .home-grid{ grid-template-columns:1fr; }
+    .category-card{ width:100%; }
+    .sub-grid{ grid-template-columns:1fr; }
+    .article-list{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loaderOverlay" aria-hidden="false">
+  <div class="loader-circle" aria-hidden="true"></div>
+  <div id="loaderPercent">Loading — 0%</div>
+</div>
+
+<!-- small enable-sound pill (hidden by default) -->
+<div id="soundPill" style="display:none;" title="Enable greeting">
+  <span id="soundIcon">🔊</span><span id="soundText">Enable sound</span>
+</div>
+
+<!-- Header -->
+ <header style="display:flex; align-items:center; justify-content:space-between; padding:10px 20px; gap:20px;">
+  <div id="logo" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+    <img id="logoImg" src="" alt="Logo" style="height:50px; display:none; border-radius:6px; object-fit:contain;">
+    <span id="logoText" style="font-weight:700; font-size:1.2rem; color:#b37533;">kamatuoran</span>
+    <input type="file" id="logoUpload" accept="image/*" style="display:none;">
+  </div>
+
+  <h1 onclick="openPage('home')" style="margin:0; cursor:pointer;">kamatuoran</h1>
+
+  <nav style="display:flex; gap:10px;">
+    <button onclick="openPage('home')">Bahay</button>
+    <button onclick="openPage('destinations')">Kategorya</button>
+    <button onclick="openPage('offers')">Offer</button>
+    <button onclick="openPage('about')">Tungkol sa</button>
+    <button onclick="openPage('feedback')">Mag-iwan ng Mensahe</button>
+  </nav>
+</header>
+
+<script>
+// Logo upload and persistence
+const logo = document.getElementById('logo'),
+      upload = document.getElementById('logoUpload'),
+      logoImg = document.getElementById('logoImg'),
+      logoText = document.getElementById('logoText');
+
+logo.addEventListener('click', () => upload.click());
+
+upload.addEventListener('change', () => {
+  const file = upload.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    logoImg.src = e.target.result;
+    logoImg.style.display = 'block';
+    logoText.style.display = 'none';
+    localStorage.setItem('siteLogo', e.target.result);
+  };
+  reader.readAsDataURL(file);
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  const savedLogo = localStorage.getItem('siteLogo');
+  if (savedLogo) {
+    logoImg.src = savedLogo;
+    logoImg.style.display = 'block';
+    logoText.style.display = 'none';
+  }
+});
+</script>
+
+<div class="kalinga-divider"></div>
+
+<!-- Pages (single-file) -->
+<div id="home" class="container page">
+  <div class="home-grid">
+    <div>
+      <section class="hero page-section">
+        <img id="home-hero-img" src="https://i.ytimg.com/vi/JIF221mSywM/maxresdefault.jpg" alt="Hero (Philippine scene)">
+        <h2 id="home-hero-title" class="editable" contenteditable="true">Tuklasin ang Pilipinas: Mga Isla, Kultura, at Mga Kwento</h2>
+        <p id="home-hero-lead" class="editable" contenteditable="true">
+          Ang Pilipinas ay isang habi ng mga isla at tradisyon — mula sa mga bulkanikong tuktok hanggang sa mga puting buhangin na dalampasigan at mga pista na daan-daang taon na ang tanda.
+          Edit this lead paragraph to highlight a featured story.
+        </p>
+      </section>
+
+      <section class="page-section">
+        <h3 style="color:var(--accent); margin-bottom:8px;">Top Stories</h3>
+        <div class="top-stories" id="topStories">
+          <div style="min-width:220px; background:white; padding:10px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+            <strong contenteditable="true" class="editable">Boracay: Regeneration & Tourism</strong>
+            <p contenteditable="true" class="editable" style="font-size:13px; margin-top:6px;">Short summary of the featured top story...</p>
+          </div>
+          <div style="min-width:220px; background:white; padding:10px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+            <strong contenteditable="true" class="editable">Kadayawan Festival Highlights</strong>
+            <p contenteditable="true" class="editable" style="font-size:13px; margin-top:6px;">Short summary of festival festivities...</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h3 style="color:var(--accent); margin-bottom:10px;">Latest Articles</h3>
+        <div class="article-list" id="homeArticles">
+          <article class="article-card" onclick="openPage('politicsMain')" data-page="politics">
+            <img src="https://tse3.mm.bing.net/th/id/OIP._aUIQP3rdUvwJf2TXbAi6QHaDp?rs=1&pid=ImgDetMain&o=7&rm=3" alt="">
+            <h3 contenteditable="true" class="editable">Politics: Leaders & Governance</h3>
+            <p contenteditable="true" class="editable">Short blurb about the politics section.</p>
+
+            <!-- emoji widget for quick reactions -->
+            <div class="emoji-widget" data-target="politics">
+              <span class="emoji-btn" data-emoji="👍" title="Like" onclick="emojiClick(event, 'politics_👍')">👍</span>
+              <span class="emoji-count" data-key="politics_👍">0</span>
+            </div>
+          </article>
+
+          <article class="article-card" onclick="openPage('cultureMain')" data-page="culture">
+            <img src="https://i.redd.it/baybayin-in-r-ph-name-v0-zikazqiqiy691.png?s=8af5766a58abf61ea8f7b79106b085aeca6b05ef" alt="">
+            <h3 contenteditable="true" class="editable">Culture: Festivals & Crafts</h3>
+            <p contenteditable="true" class="editable">Short blurb about Filipino culture & traditions.</p>
+            <div class="emoji-widget" data-target="culture">
+              <span class="emoji-btn" data-emoji="🎉" title="Celebrate" onclick="emojiClick(event, 'culture', '🎉')">🎉</span>
+              <span class="emoji-count" data-key="culture_🎉">0</span>
+            </div>
+          </article>
+
+          <article class="article-card" onclick="openPage('societyMain')" data-page="society">
+            <img src="https://www.coursehero.com/qa/attachment/29600235/" alt="">
+            <h3 contenteditable="true" class="editable">Society: Community Life</h3>
+            <p contenteditable="true" class="editable">Short blurb on modern life in the Philippines.</p>
+            <div class="emoji-widget" data-target="society">
+              <span class="emoji-btn" data-emoji="❤️" title="Love" onclick="emojiClick(event, 'society', '❤️')">❤️</span>
+              <span class="emoji-count" data-key="society_❤️">0</span>
+            </div>
+          </article>
+
+          <article class="article-card" onclick="openPage('cultureMain')" data-page="heritage">
+            <img src="https://cdn.culturedays.ca/events/4928141b-0665-4926-9670-e4c370532d7d/pandanggo-sa-ilaw-1953-61-cm-x-76-cm-oil-on-canvas-by-fernando-amorsolo.png?width=768" alt="">
+            <h3 contenteditable="true" class="editable">Heritage Sites & Preservation</h3>
+            <p contenteditable="true" class="editable">Blurb about heritage conservation.</p>
+            <div class="emoji-widget" data-target="heritage">
+              <span class="emoji-btn" data-emoji="🏛️" title="Respect" onclick="emojiClick(event, 'heritage', '🏛️')">🏛️</span>
+              <span class="emoji-count" data-key="heritage_🏛️">0</span>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <aside class="sidebar">
+      <div class="editorial page-section">
+        <h4 style="margin:0 0 8px 0; color:var(--deep)">Editorial</h4>
+        <p contenteditable="true" class="editable">A short editorial box: welcome visitors and highlight the mission of Pamana.ph — connect with Filipino heritage.</p>
+      </div>
+
+      <div class="page-section">
+        <h4 style="color:var(--accent); margin:0 0 8px 0;">Quick Picks</h4>
+        <ul style="padding-left:18px;">
+          <li contenteditable="true" class="editable">Top beach escapes</li>
+          <li contenteditable="true" class="editable">Must-see festivals</li>
+          <li contenteditable="true" class="editable">Heritage towns</li>
+        </ul>
+      </div>
+
+     <div class="page-section" style="margin-top:12px;"> 
+  <h4 style="color:var(--accent)">Search</h4>
+  <input id="searchInput" placeholder="Search destinations or articles..." 
+         style="width:100%; padding:8px; border-radius:8px; border:2px solid #eee;" 
+         oninput="filterItems()"/>
+  <button style="margin-top:8px; padding:8px 12px; border:none; background:var(--deep); color:white; border-radius:8px; cursor:pointer;"
+          onclick="filterItems()">Hanap</button>
+
+  <ul id="searchResults" style="margin-top:10px; list-style:none; padding:0;"></ul>
+</div>
+
+<script>
+// Example data: destinations or articles
+const items = [
+  "Boracay Beach",
+  "Chocolate Hills",
+  "Intramuros",
+  "Rizal Park",
+  "Palawan",
+  "Banaue Rice Terraces",
+  "Vigan",
+  "Cebu City"
+];
+
+function filterItems() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const results = items.filter(item => item.toLowerCase().includes(query));
+  const resultsContainer = document.getElementById('searchResults');
+  resultsContainer.innerHTML = results.length 
+    ? results.map(item => `<li style="padding:6px 0; border-bottom:1px solid #eee;">${item}</li>`).join('')
+    : '<li style="padding:6px 0;">No results found</li>';
+}
+
+// Initialize empty results
+filterItems();
+</script>
+
+    </aside>
+  </div>
+
+  <!-- quick categories row -->
+  <div class="category-row">
+    <div class="category-card" onclick="openPage('politicsMain')" data-category="politics">
+      <img src="https://images.gmanews.tv/webpics/2023/06/heroes_ph_2023_06_10_18_13_24.jpg" alt="">
+      <h4>Politics</h4>
+      <div class="emoji-widget" data-target="politics">
+        <span class="emoji-btn" data-emoji="🗳️" title="Vote" onclick="emojiClick(event, 'politics', '🗳️')">🗳️</span>
+        <span class="emoji-count" data-key="politics_🗳️">0</span>
+      </div>
+    </div>
+    <div class="category-card" onclick="openPage('cultureMain')" data-category="culture">
+      <img src="https://1.bp.blogspot.com/-rBGI8fUhxw0/WNpFjanh6tI/AAAAAAAABUo/j-3k_UR2QYkBh-2MS0yDs2BjZV8cSvqTwCLcB/s1600/Fernando%2BAmorsolo%2B-%2BTinikling%2Bin%2Bbarrio%2B-%2BKuyadex.info.jpg" alt="">
+      <h4>Culture</h4>
+      <div class="emoji-widget" data-target="culture">
+        <span class="emoji-btn" data-emoji="🎭" title="Arts" onclick="emojiClick(event, 'culture', '🎭')">🎭</span>
+        <span class="emoji-count" data-key="culture_🎭">0</span>
+      </div>
+    </div>
+    <div class="category-card" onclick="openPage('societyMain')" data-category="society">
+      <img src="https://i.pinimg.com/originals/91/79/0e/91790eb4ea76537f2921a601e21ffb08.jpg" alt="">
+      <h4>Society</h4>
+      <div class="emoji-widget" data-target="society">
+        <span class="emoji-btn" data-emoji="🏘️" title="Community" onclick="emojiClick(event, 'society', '🏘️')">🏘️</span>
+        <span class="emoji-count" data-key="society_🏘️">0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Destinations (category grid) -->
+<div id="destinations" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent);">Main Categories</h2>
+    <div class="sub-grid" style="margin-top:12px;">
+      <div class="sub-box" onclick="openPage('politicsMain')" data-sub="politics"><img src="https://philnews.ph/wp-content/uploads/2019/03/Philippine-Government-Agencies.jpg"><h3>Politics</h3>
+        <div class="emoji-widget" data-target="politics">
+          <span class="emoji-btn" data-emoji="📜" title="History" onclick="emojiClick(event, 'politics', '📜')">📜</span>
+          <span class="emoji-count" data-key="politics_📜">0</span>
+        </div>
+      </div>
+      <div class="sub-box" onclick="openPage('cultureMain')" data-sub="culture"><img src="https://tse1.mm.bing.net/th/id/OIP.01cnUcSh1qHmLmUIZKwGPAHaFj?w=1080&h=810&rs=1&pid=ImgDetMain&o=7&rm=3"><h3>Culture</h3>
+        <div class="emoji-widget" data-target="culture">
+          <span class="emoji-btn" data-emoji="🪕" title="Music" onclick="emojiClick(event, 'culture', '🪕')">🪕</span>
+          <span class="emoji-count" data-key="culture_🪕">0</span>
+        </div>
+      </div>
+      <div class="sub-box" onclick="openPage('societyMain')" data-sub="society"><img src="https://i.pinimg.com/474x/5c/78/70/5c78706998b29598d3c9086fef3d4a04.jpg?nii=t"><h3>Society</h3>
+        <div class="emoji-widget" data-target="society">
+          <span class="emoji-btn" data-emoji="🤝" title="Bayanihan" onclick="emojiClick(event, 'society', '🤝')">🤝</span>
+          <span class="emoji-count" data-key="society_🤝">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Offers, About, Feedback pages -->
+<div id="offers" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">Exclusive Offers</h2>
+    <p>Find curated travel deals here — edit content directly (contenteditable).</p>
+  </div>
+</div>
+
+<div id="about" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">About Pamana.ph</h2>
+    <p contenteditable="true" class="editable">Pamana.ph is dedicated to showcasing the Philippines' culture, places, and people.</p>
+  </div>
+</div>
+
+<div id="feedback" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">Mag-iwan ng Mensahe</h2>
+    <p contenteditable="true">Have a suggestion? Leave a note.</p>
+    <textarea id="fbArea" rows="4" style="width:100%; padding:10px; border-radius:8px; border:2px solid #eee;"></textarea>
+    <div style="margin-top:8px;">
+      <button onclick="submitFeedback()" class="add-img-btn">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category pages -->
+<div id="politicsMain" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">Politics</h2>
+    <div class="sub-grid">
+      <div class="sub-box" onclick="openPage('politics1')"><img src="https://tse1.mm.bing.net/th/id/OIP._4e2p1GyLkoBGnMCbz3vkQHaEK?rs=1&pid=ImgDetMain&o=7&rm=3"><h3>Leaders & History</h3></div>
+      <div class="sub-box" onclick="openPage('politics2')"><img src="https://preview.redd.it/25s9c6lu2qa91.jpg?width=643&format=pjpg&auto=webp&s=92bb5d30e341a4218cfb77f80eb2bd0dc4a63e0c"><h3>Government System</h3></div>
+      <div class="sub-box" onclick="openPage('politics3')"><img src="https://www.arts.ubc.ca/wp-content/uploads/sites/24/2022/08/PHpolitics_v2.jpg"><h3>Political Events</h3></div>
+    </div>
+  </div>
+</div>
+
+<div id="cultureMain" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">Culture</h2>
+    <div class="sub-grid">
+      <div class="sub-box" onclick="openPage('culture1')"><img src="https://tse1.mm.bing.net/th/id/OIP.kQhsBZgKZEKbVkB0dzDbiQAAAA?w=474&h=232&rs=1&pid=ImgDetMain&o=7&rm=3"><h3>Festivals</h3></div>
+      <div class="sub-box" onclick="openPage('culture2')"><img src="https://i.imgur.com/0knoKUl.jpeg"><h3>Traditional Dress</h3></div>
+      <div class="sub-box" onclick="openPage('culture3')"><img src="https://i.imgur.com/Y5lDnMU.jpeg"><h3>Food Heritage</h3></div>
+    </div>
+  </div>
+</div>
+
+<div id="societyMain" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 style="color:var(--accent)">Society</h2>
+    <div class="sub-grid">
+      <div class="sub-box" onclick="openPage('society1')"><img src="https://tse1.mm.bing.net/th/id/OIP.oNiWiCo0vRh5iXFEOYEvgAHaGN?rs=1&pid=ImgDetMain&o=7&rm=3"><h3>Community Life</h3></div>
+      <div class="sub-box" onclick="openPage('society2')"><img src="https://rmn.ph/wp-content/uploads/2020/03/CHED-DEPED.jpg"><h3>Education</h3></div>
+      <div class="sub-box" onclick="openPage('society3')"><img src="https://i.imgur.com/HDVnhJh.jpeg"><h3>Modern Lifestyle</h3></div>
+    </div>
+  </div>
+</div>
+
+<!-- minimal subpages -->
+<div id="politics1" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 contenteditable="true" class="editable">Leaders & Philippine History</h2>
+    <p contenteditable="true" class="editable">Write about notable leaders, revolutions, and historic milestones.</p>
+    <div class="slider" id="p1slider"></div>
+    <button class="add-img-btn" onclick="addImage('p1slider')">Add image</button>
+  </div>
+</div>
+
+<div id="culture1" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 contenteditable="true" class="editable">Festivals</h2>
+    <p contenteditable="true" class="editable">Describe the country's colorful festivals.</p>
+    <div class="slider" id="c1slider"></div>
+    <button class="add-img-btn" onclick="addImage('c1slider')">Add image</button>
+  </div>
+</div>
+
+<div id="society1" class="container page" style="display:none;">
+  <div class="page-section">
+    <button class="back-btn" onclick="goBack()">← Balik</button>
+    <h2 contenteditable="true" class="editable">Community Life</h2>
+    <p contenteditable="true" class="editable">Describe barrio life, markets, and bayanihan spirit.</p>
+    <div class="slider" id="s1slider"></div>
+    <button class="add-img-btn" onclick="addImage('s1slider')">Add image</button>
+  </div>
+</div>
+
+<script>
+  // Simple page manager + smart history
+  const pages = document.querySelectorAll('.page');
+  let historyStack = ['home']; // start with home visible
+
+  function showOnly(id){
+    pages.forEach(p => p.style.display = 'none');
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'block';
+    window.scrollTo(0,0);
+  }
+
+  function openPage(id){
+    showOnly(id);
+    historyStack.push(id);
+  }
+
+  function goBack(){
+    if(historyStack.length > 1){
+      historyStack.pop(); // remove current
+      const prev = historyStack.pop() || 'home';
+      openPage(prev);
+    } else {
+      openPage('home');
+    }
+  }
+
+  // add image to a slider/gallery DOM by prompt
+  function addImage(galleryId){
+    const url = prompt('Paste image URL (eg. https://...jpg):');
+    if(!url) return;
+    const g = document.getElementById(galleryId);
+    if(!g) return alert('Gallery not found: '+galleryId);
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '320px';
+    img.style.height = '200px';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '8px';
+    img.style.marginRight = '8px';
+    g.appendChild(img);
+  }
+
+  function submitFeedback(){
+    const text = document.getElementById('fbArea').value;
+    if(!text.trim()) return alert('Please write something.');
+    alert('Thank you! Your message has been received (demo).');
+    document.getElementById('fbArea').value = '';
+    openPage('home');
+  }
+
+  // initialize visible page
+  showOnly('home');
+
+  /*** Loading overlay logic ***/
+  const loader = document.getElementById('loaderOverlay');
+  const loaderPercent = document.getElementById('loaderPercent');
+  let pct = 0;
+  const minShow = 600; // minimal ms for loader
+  const start = Date.now();
+
+  // simulate progressive loading (feel free to change)
+  const interval = setInterval(() => {
+    pct += Math.floor(Math.random() * 12) + 4; // jump
+    if(pct > 97) pct = 97;
+    loaderPercent.textContent = `Loading — ${pct}%`;
+  }, 90);
+
+  // finish loader once window loads (or fallback after 2s)
+  window.addEventListener('load', finishLoader);
+  setTimeout(finishLoader, 2400);
+
+  function finishLoader(){
+    if(loader.dataset.done) return;
+    loader.dataset.done = '1';
+    clearInterval(interval);
+    loaderPercent.textContent = 'Finalizing — 100%';
+    const elapsed = Date.now() - start;
+    const wait = Math.max(0, minShow - elapsed);
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      loader.style.pointerEvents = 'none';
+      loader.setAttribute('aria-hidden','true');
+      setTimeout(()=> loader.remove(), 400);
+      // After loader removed, try to auto-play greeting
+      attemptGreetingAutoplay();
+    }, wait + 300);
+  }
+
+  /***** Emoji interaction system *****/
+  // Helper: key for localStorage
+  function getKey(cat, emoji){ return `pamana_emoji_${cat}_${encodeURIComponent(emoji)}`; }
+
+  // On click: animate small floating emoji and increment storage + update counts
+  function emojiClick(e, category, emoji){
+    // prevent cascading openPage if inside clickable card
+    e.stopPropagation();
+    triggerFloatingEmoji(e.clientX, e.clientY, emoji);
+    incrementEmojiCount(category, emoji);
+    animateBtn(e.currentTarget || e.target);
+  }
+
+  function animateBtn(btn){
+    try{
+      btn.style.transform = 'translateY(-6px) scale(1.08)';
+      setTimeout(()=> btn.style.transform = '', 160);
+    }catch(e){}
+  }
+
+  function triggerFloatingEmoji(x, y, emoji){
+    const el = document.createElement('div');
+    el.className = 'float-emoji';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.textContent = emoji;
+    document.body.appendChild(el);
+    setTimeout(()=> el.remove(), 1400);
+  }
+
+  function incrementEmojiCount(category, emoji){
+    const key = getKey(category, emoji);
+    let v = parseInt(localStorage.getItem(key) || '0', 10);
+    v = Math.max(0) + 1;
+    localStorage.setItem(key, v);
+    updateEmojiCounts(); // refresh UI
+  }
+
+  // find all counts elements and refresh from localStorage
+  function updateEmojiCounts(){
+    const countEls = document.querySelectorAll('.emoji-count');
+    countEls.forEach(el => {
+      const keyAttr = el.getAttribute('data-key');
+      if(keyAttr){
+        // keyAttr is like "category_emoji" (with emoji char)
+        const val = localStorage.getItem('pamana_emoji_' + keyAttr) || '0';
+        el.textContent = val;
+      }
+    });
+  }
+
+  // initialize counts on load
+  updateEmojiCounts();
+
+  /***** Welcome voice (autoplay attempt) *****/
+  const soundPill = document.getElementById('soundPill');
+  let greetingPlayed = false;
+
+  function makeGreetingUtterance(){
+    const text = "Maligayang pagdating sa Pamana dot P H. Tuklasin ang kultura at mga kwento ng Pilipinas.";
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'fil-PH';
+    u.rate = 1;
+    u.pitch = 1;
+    u.volume = 1;
+    return u;
+  }
+
+  async function attemptGreetingAutoplay(){
+    if(greetingPlayed) return;
+    // try Web Speech API
+    if('speechSynthesis' in window){
+      try {
+        const utter = makeGreetingUtterance();
+        // Some browsers require a user gesture; we attempt to speak and catch errors
+        window.speechSynthesis.cancel(); // reset
+        window.speechSynthesis.speak(utter);
+        // We can't reliably detect autoplay block, so set a timeout to mark played.
+        greetingPlayed = true;
+        // hide pill if visible
+        soundPill.style.display = 'none';
+      } catch(err){
+        // If error, show enable sound pill (user can tap)
+        showEnablePill();
+      }
+    } else {
+      // fallback: small beep using AudioContext
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = 520;
+        o.connect(ctx.destination);
+        o.start();
+        setTimeout(()=> { o.stop(); ctx.close(); }, 260);
+        greetingPlayed = true;
+      } catch(e){
+        showEnablePill();
+      }
+    }
+  }
+
+  function showEnablePill(){
+    soundPill.style.display = 'flex';
+    soundPill.onclick = userEnableSound;
+  }
+
+  function userEnableSound(){
+    // user gesture: speak greeting now
+    try {
+      const utter = makeGreetingUtterance();
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+      greetingPlayed = true;
+      soundPill.style.display = 'none';
+    } catch(e){
+      // fallback: try simple audio beep
+      try {
+        const a = new Audio();
+        // tiny dataURI beep (short) - generate by oscillator if needed
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = 540;
+        const g = ctx.createGain();
+        g.gain.value = 0.06;
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        setTimeout(()=> { o.stop(); ctx.close(); }, 300);
+        greetingPlayed = true;
+        soundPill.style.display = 'none';
+      } catch(err){
+        alert('Unable to play greeting on your device.');
+      }
+    }
+  }
+
+  // If user interacts anywhere (first click / touch), try to play greeting if not yet played
+  function firstInteractionHandler(){
+    if(!greetingPlayed) attemptGreetingAutoplay();
+    window.removeEventListener('pointerdown', firstInteractionHandler);
+    window.removeEventListener('touchstart', firstInteractionHandler);
+  }
+  window.addEventListener('pointerdown', firstInteractionHandler);
+  window.addEventListener('touchstart', firstInteractionHandler);
+
+  // On DOM ready, ensure emoji counts shown and prepare enable pill only if needed
+  document.addEventListener('DOMContentLoaded', () => {
+    updateEmojiCounts();
+    // Attach keyboard accessibility: space/enter on emoji buttons
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.setAttribute('tabindex','0');
+      btn.addEventListener('keydown', (ev) => {
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault();
+          const cat = btn.closest('.emoji-widget')?.dataset?.target;
+          const emoji = btn.dataset?.emoji;
+          if(cat && emoji) emojiClick(ev, cat, emoji);
+        }
+      });
+    });
+  });
+
+  // Expose some functions to console for debugging
+  window.pamana = {
+    incrementEmojiCount,
+    updateEmojiCounts,
+    triggerFloatingEmoji,
+    attemptGreetingAutoplay
+  };
+
+  // ensure counts update when page gets focus (in case user opens in multiple tabs)
+  window.addEventListener('focus', updateEmojiCounts);
+
+  // small UX: prevent emoji click from triggering parent openPage when clicking directly
+  document.querySelectorAll('.emoji-widget').forEach(w => {
+    w.addEventListener('click', (ev) => { ev.stopPropagation(); });
+  });
+
+  // If SpeechSynthesis voices aren't loaded immediately, attempt to load voices (no-op safe)
+  if('speechSynthesis' in window){
+    window.speechSynthesis.onvoiceschanged = () => { /* just ensure voices availability */ };
+  }
+</script>
+
+</body>
+</html>
